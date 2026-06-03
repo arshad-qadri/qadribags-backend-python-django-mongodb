@@ -20,6 +20,7 @@ from common.cloudinary_service import (
     upload_image,
 )
 from .models import ProductImage
+from .serializers import ProductSerializer
 
 
 class CreateProductView(APIView):
@@ -146,30 +147,15 @@ class GetProductBySKU(APIView):
         try:
             product = Product.objects(sku=sku).first()
 
+            if not product:
+                return error_response(
+                    "Product not found",
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
             return success_response(
-                {
-                    "sku": product.sku,
-                    "name": product.name,
-                    "description": product.description,
-                    "category": product.category,
-                    "material": product.material,
-                    "colors": product.colors,
-                    "weight": product.weight,
-                    "dimensions": product.dimensions,
-                    "supplier": product.supplier,
-                    "status": product.status,
-                    "price": product.price,
-                    "stock": product.stock,
-                    "images": [
-                        {
-                            "public_id": image.public_id,
-                            "url": image.url,
-                        }
-                        for image in product.images
-                    ],
-                    "created_at": product.created_at,
-                    "updated_at": product.updated_at,
-                },
+                ProductSerializer(product).data,
                 "Product found successfully",
                 status.HTTP_200_OK,
             )
@@ -186,10 +172,9 @@ class GetProductList(APIView):
     def get(self, request):
         try:
             products = Product.objects.all()
-            for product in products:
-                product["id"] = str(product["id"])
+            serializer = ProductSerializer(products, many=True)
 
-            return success_response(products, None, status.HTTP_200_OK)
+            return success_response(serializer.data, None, status.HTTP_200_OK)
         except Exception as e:
             return error_response(
                 INTERNAL_SERVER_ERROR,
