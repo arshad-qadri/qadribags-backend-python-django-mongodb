@@ -15,3 +15,6 @@ USER_ALREADY_EXISTS = "User already exists"
 INVALID_CREDENTIALS = "Invalid credentials"
 INTERNAL_SERVER_ERROR = "Internal server error"
 ALL_FIELDS_REQUIRED = "All fields are required"
+
+PRODUCT_CREATED = "Product created successfully"
+PRODUCT_ALREADY_EXIST = "Product already exists"
