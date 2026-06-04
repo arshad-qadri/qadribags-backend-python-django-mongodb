@@ -272,3 +272,56 @@ class UpdateProductView(AuthenticatedAPIView):
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class DeleteImageView(AuthenticatedAPIView):
+
+    def delete(self, request, sku):
+        try:
+            public_id = request.data.get("public_id")
+
+            if not public_id:
+                return error_response(
+                    "Missing public_id",
+                    "public_id is required in request body",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+            product = Product.objects.get(sku=sku)
+
+            # Check if image exists (using object attribute, not dict get)
+            image_exists = any(img.public_id == public_id for img in product.images)
+
+            if not image_exists:
+                return error_response(
+                    "Image not found",
+                    f"The image with public_id '{public_id}' is not associated with this product.",
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            # Filter out the image with the given public_id
+            filtered_product_images = [
+                img for img in product.images if img.public_id != public_id
+            ]
+            product.images = filtered_product_images
+            product.save()
+
+            return success_response(
+                None,
+                "Image deleted successfully",
+                status.HTTP_200_OK,
+            )
+
+        except Product.DoesNotExist:
+            return error_response(
+                "Product not found",
+                f"No product found with SKU: {sku}",
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        except Exception as e:
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
