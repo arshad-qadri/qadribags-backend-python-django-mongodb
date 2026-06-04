@@ -1,6 +1,6 @@
-from rest_framework.views import APIView
 from rest_framework import status
 
+from common.authentication import AuthenticatedAPIView
 from common.constants import (
     PRODUCT_CREATED,
     PRODUCT_ALREADY_EXIST,
@@ -23,7 +23,7 @@ from .models import ProductImage
 from .serializers import ProductSerializer
 
 
-class CreateProductView(APIView):
+class CreateProductView(AuthenticatedAPIView):
 
     def post(self, request):
         try:
@@ -93,7 +93,7 @@ class CreateProductView(APIView):
             )
 
 
-class UploadProductImageView(APIView):
+class UploadProductImageView(AuthenticatedAPIView):
 
     def post(self, request, sku):
 
@@ -142,8 +142,8 @@ class UploadProductImageView(APIView):
             )
 
 
-class GetProductBySKU(APIView):
-    def post(self, request, sku):
+class GetProductBySKU(AuthenticatedAPIView):
+    def get(self, request, sku):
         try:
             product = Product.objects(sku=sku).first()
 
@@ -168,13 +168,104 @@ class GetProductBySKU(APIView):
             )
 
 
-class GetProductList(APIView):
+class GetProductList(AuthenticatedAPIView):
     def get(self, request):
         try:
             products = Product.objects.all()
             serializer = ProductSerializer(products, many=True)
 
             return success_response(serializer.data, None, status.HTTP_200_OK)
+        except Exception as e:
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ActiveInactiveProductBySKU(AuthenticatedAPIView):
+    def post(self, request, sku):
+        try:
+            requested_status = request.data.get("status")
+
+            if not requested_status:
+                return error_response(
+                    "Status is required", None, status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                product = Product.objects.get(sku=sku)
+            except Product.DoesNotExist:
+                return error_response(
+                    "Product not found", None, status.HTTP_404_BAD_REQUEST
+                )
+
+            product.status = requested_status
+            product.save()
+
+            return success_response(
+                None, f"Product {requested_status.lower()} successfully"
+            )
+
+        except Exception as e:
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class UpdateProductView(AuthenticatedAPIView):
+    def patch(self, request, sku):
+        try:
+            try:
+                product = Product.objects.get(sku=sku)
+            except Product.DoesNotExist:
+                return error_response(
+                    "Product not found", None, status.HTTP_404_NOT_FOUND
+                )
+
+            data = request.data
+
+            for field in ["name", "category", "price"]:
+                if field in data and not data.get(field):
+                    return error_response(
+                        f"{field.capitalize()} cannot be empty",
+                        None,
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+
+            if "name" in data:
+                product.name = data.get("name")
+            if "category" in data:
+                product.category = data.get("category")
+            if "price" in data:
+                product.price = data.get("price")
+            if "description" in data:
+                product.description = data.get("description")
+            if "material" in data:
+                product.material = data.get("material")
+            if "colors" in data:
+                product.colors = data.get("colors")
+            if "weight" in data:
+                product.weight = data.get("weight")
+            if "dimensions" in data:
+                product.dimensions = data.get("dimensions")
+            if "supplier" in data:
+                product.supplier = data.get("supplier")
+            if "stock" in data:
+                product.stock = data.get("stock")
+            # if "images" in data:
+            #     product.images = data.get("images")
+
+            product.save()
+
+            return success_response(
+                {"sku": product.sku},
+                "Product updated successfully",
+                status.HTTP_200_OK,
+            )
+
         except Exception as e:
             return error_response(
                 INTERNAL_SERVER_ERROR,

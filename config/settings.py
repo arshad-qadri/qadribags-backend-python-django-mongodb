@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from corsheaders.defaults import default_headers, default_methods
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,6 +23,13 @@ load_dotenv(BASE_DIR / ".env")
 
 def env_list(name):
     return [value.strip() for value in os.getenv(name, "").split(",") if value.strip()]
+
+
+def env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 # Quick-start development settings - unsuitable for production
@@ -33,7 +41,11 @@ SECRET_KEY = 'django-insecure-h7x67%yw01!4!67du++e7q&!r$*fz$@)yr6tx)=k0qie)bcf+*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS") or [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+]
 
 
 # Application definition
@@ -134,6 +146,26 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:\d+$",
+    r"^http://127\.0\.0\.1:\d+$",
+    r"^http://192\.168\.\d{1,3}\.\d{1,3}:\d+$",
+    r"^http://10\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$",
+    r"^http://172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}:\d+$",
+]
+CORS_URLS_REGEX = r"^/api/.*$"
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "authorization",
+]
+CORS_ALLOW_METHODS = list(default_methods)
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
+CORS_ALLOW_PRIVATE_NETWORK = True
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS") or [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
 CLOUDINARY_CLOUD_NAME = os.getenv(
     "CLOUDINARY_CLOUD_NAME"
 )
