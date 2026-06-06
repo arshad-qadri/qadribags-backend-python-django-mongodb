@@ -1,0 +1,277 @@
+from common.authentication import AuthenticatedAPIView
+from rest_framework import status
+from .serializers import CustomerSerializer
+from bson.errors import InvalidId
+
+from common.response import (
+    success_response,
+    error_response,
+)
+
+from common.constants import (
+    ALL_FIELDS_REQUIRED,
+    CUSTOMER_CREATED,
+    CUSTOMER_ALREADY_EXIST,
+    INTERNAL_SERVER_ERROR,
+    CUSTOMER_NOT_FOUND,
+    CUSTOMER_DELETED
+)
+
+from .models import Customer
+
+
+class CreateCustomerView(AuthenticatedAPIView):
+
+    def post(self, request):
+
+        try:
+
+            name = request.data.get("name")
+            mobile_number = request.data.get("mobile_number")
+
+            required_fields = [
+                "name",
+                "mobile_number",
+            ]
+
+            missing_fields = [
+                field for field in required_fields if not request.data.get(field)
+            ]
+
+            if missing_fields:
+                return error_response(
+                    ALL_FIELDS_REQUIRED,
+                    {"missing_fields": missing_fields},
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+            existing_customer = Customer.objects(mobile_number=mobile_number).first()
+
+            if existing_customer:
+
+                return error_response(
+                    CUSTOMER_ALREADY_EXIST,
+                    None,
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+            customer = Customer(
+                name=name,
+                mobile_number=mobile_number,
+                email=request.data.get("email"),
+                address=request.data.get("address"),
+                city=request.data.get("city"),
+                state=request.data.get("state"),
+                pincode=request.data.get("pincode"),
+                gst_number=request.data.get("gst_number"),
+                customer_type=request.data.get(
+                    "customer_type",
+                    "RETAIL",
+                ),
+            )
+
+            customer.save()
+
+            return success_response(
+                {"id": str(customer.id)},
+                CUSTOMER_CREATED,
+                status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class GetAllCustomersView(AuthenticatedAPIView):
+
+    def get(self, request):
+
+        try:
+
+            customers = Customer.objects()
+
+            return success_response(
+                CustomerSerializer.serialize_many(customers),
+                "Customers fetched successfully",
+                status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class GetCustomerByIdView(AuthenticatedAPIView):
+
+    def get(self, request, customer_id):
+
+        try:
+
+            customer = Customer.objects(id=customer_id).first()
+
+            if not customer:
+
+                return error_response(
+                    CUSTOMER_NOT_FOUND,
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            return success_response(
+                CustomerSerializer.serialize(customer),
+                "Customer fetched successfully",
+                status.HTTP_200_OK,
+            )
+
+        except InvalidId:
+
+            return error_response(
+                CUSTOMER_NOT_FOUND,
+                None,
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        except Exception as e:
+
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class UpdateCustomerView(AuthenticatedAPIView):
+
+    def put(self, request, customer_id):
+
+        try:
+
+            customer = Customer.objects(id=customer_id).first()
+
+            if not customer:
+
+                return error_response(
+                    CUSTOMER_NOT_FOUND,
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            mobile_number = request.data.get("mobile_number")
+
+            if mobile_number:
+
+                existing_customer = Customer.objects(
+                    mobile_number=mobile_number
+                ).first()
+
+                if existing_customer and str(existing_customer.id) != str(customer.id):
+
+                    return error_response(
+                        CUSTOMER_ALREADY_EXIST,
+                        None,
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+
+            customer.name = request.data.get(
+                "name",
+                customer.name,
+            )
+
+            customer.mobile_number = request.data.get(
+                "mobile_number",
+                customer.mobile_number,
+            )
+
+            customer.email = request.data.get(
+                "email",
+                customer.email,
+            )
+
+            customer.address = request.data.get(
+                "address",
+                customer.address,
+            )
+
+            customer.city = request.data.get(
+                "city",
+                customer.city,
+            )
+
+            customer.state = request.data.get(
+                "state",
+                customer.state,
+            )
+
+            customer.pincode = request.data.get(
+                "pincode",
+                customer.pincode,
+            )
+
+            customer.gst_number = request.data.get(
+                "gst_number",
+                customer.gst_number,
+            )
+
+            customer.customer_type = request.data.get(
+                "customer_type",
+                customer.customer_type,
+            )
+
+            customer.save()
+
+            return success_response(
+                CustomerSerializer.serialize(customer),
+                "Customer updated successfully",
+                status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class DeleteCustomerView(AuthenticatedAPIView):
+
+    def delete(self, request, customer_id):
+
+        try:
+
+            customer = Customer.objects(
+                id=customer_id
+            ).first()
+
+            if not customer:
+
+                return error_response(
+                    CUSTOMER_NOT_FOUND,
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            customer.delete()
+
+            return success_response(
+                None,
+                CUSTOMER_DELETED,
+                status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

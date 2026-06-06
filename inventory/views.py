@@ -1,5 +1,5 @@
 from rest_framework import status
-
+import random
 from common.authentication import AuthenticatedAPIView
 from common.constants import (
     # PRODUCT_CREATED,
@@ -118,6 +118,9 @@ class InventoryByCategoryPercentage(AuthenticatedAPIView):
             ]
 
             result = list(Product.objects.aggregate(*pipeline))
+
+            for item in result:
+                item["color"] = f"#{random.randint(0, 0xFFFFFF):06x}"
 
             return success_response(
                 {"categoryItems": result},
