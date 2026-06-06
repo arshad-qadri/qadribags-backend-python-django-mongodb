@@ -6,6 +6,7 @@ from .views import (
     GetProductList,
     UpdateProductView,
     DeleteImageView,
+    ActiveInactiveProductBySKU
 )
 
 urlpatterns = [
@@ -15,4 +16,5 @@ urlpatterns = [
     path("list", GetProductList.as_view()),
     path("delete-image/<str:sku>", DeleteImageView.as_view()),
     path("get-product-by-sku/<str:sku>", GetProductBySKU.as_view()),
+    path("active-inactive/<str:sku>", ActiveInactiveProductBySKU.as_view()),
 ]
