@@ -19,6 +19,8 @@ class Customer(Document):
         required=True,
         unique=True,
     )
+    
+    customer_id = StringField()
 
     email = EmailField()
 
@@ -31,6 +33,8 @@ class Customer(Document):
     pincode = StringField()
 
     gst_number = StringField()
+    
+    status = StringField(default="ACTIVE", choices=["ACTIVE", "INACTIVE"])
 
     customer_type = StringField(
         default="RETAIL",

@@ -108,7 +108,7 @@ class LoginView(APIView):
                 {
                     "user_id": str(user.id),
                     "username": user.username,
-                    "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                    "exp": datetime.now(timezone.utc) + timedelta(hours=24),
                 },
                 settings.SECRET_KEY,
                 algorithm="HS256",

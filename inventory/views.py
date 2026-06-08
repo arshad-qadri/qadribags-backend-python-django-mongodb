@@ -16,12 +16,13 @@ from products.models import Product
 from products.serializers import ProductSerializer
 
 
-class GetTotalStock(AuthenticatedAPIView):
+class GetTotalAvailableStockAndProductCount(AuthenticatedAPIView):
     def get(self, request):
         try:
-            total_stock = Product.objects.sum("stock")
+            total_available_stock = Product.objects.sum("stock")
+            total_product_count = Product.objects.count()
             return success_response(
-                {"stock": total_stock}, "Stock fetched successfully"
+                {"total_available_stock": total_available_stock, "total_product_count":total_product_count}, "Stock fetched successfully"
             )
         except Exception as e:
             return error_response(
@@ -29,13 +30,13 @@ class GetTotalStock(AuthenticatedAPIView):
             )
 
 
-class GetTotalLowStock(AuthenticatedAPIView):
+class GetLowStockProductCount(AuthenticatedAPIView):
     def get(self, request):
         try:
             total_low_stock = Product.objects.filter(stock__lte=10).count()
             return success_response(
                 {"lowStock": total_low_stock},
-                "Low stock fetched successfully",
+                "Low stock product count fetched successfully",
                 status.HTTP_200_OK,
             )
         except Exception as e:

@@ -5,6 +5,7 @@ class CustomerSerializer:
 
         return {
             "id": str(customer.id),
+            "customer_id":customer.customer_id,
             "name": customer.name,
             "mobile_number": customer.mobile_number,
             "email": customer.email,
@@ -14,6 +15,7 @@ class CustomerSerializer:
             "pincode": customer.pincode,
             "gst_number": customer.gst_number,
             "customer_type": customer.customer_type,
+            "status":customer.status
         }
 
     @staticmethod

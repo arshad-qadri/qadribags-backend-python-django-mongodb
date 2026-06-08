@@ -2,6 +2,7 @@ from common.authentication import AuthenticatedAPIView
 from rest_framework import status
 from .serializers import CustomerSerializer
 from bson.errors import InvalidId
+from common.utils import generate_customer_id
 
 from common.response import (
     success_response,
@@ -28,7 +29,7 @@ class CreateCustomerView(AuthenticatedAPIView):
 
             name = request.data.get("name")
             mobile_number = request.data.get("mobile_number")
-
+            customer_id = generate_customer_id()
             required_fields = [
                 "name",
                 "mobile_number",
@@ -58,6 +59,7 @@ class CreateCustomerView(AuthenticatedAPIView):
             customer = Customer(
                 name=name,
                 mobile_number=mobile_number,
+                customer_id=customer_id,
                 email=request.data.get("email"),
                 address=request.data.get("address"),
                 city=request.data.get("city"),
@@ -116,7 +118,7 @@ class GetCustomerByIdView(AuthenticatedAPIView):
 
         try:
 
-            customer = Customer.objects(id=customer_id).first()
+            customer = Customer.objects(customer_id=customer_id).first()
 
             if not customer:
 
@@ -155,7 +157,7 @@ class UpdateCustomerView(AuthenticatedAPIView):
 
         try:
 
-            customer = Customer.objects(id=customer_id).first()
+            customer = Customer.objects(customer_id=customer_id).first()
 
             if not customer:
 
@@ -249,7 +251,7 @@ class DeleteCustomerView(AuthenticatedAPIView):
         try:
 
             customer = Customer.objects(
-                id=customer_id
+                customer_id=customer_id
             ).first()
 
             if not customer:
