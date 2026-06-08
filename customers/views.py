@@ -15,7 +15,7 @@ from common.constants import (
     CUSTOMER_ALREADY_EXIST,
     INTERNAL_SERVER_ERROR,
     CUSTOMER_NOT_FOUND,
-    CUSTOMER_DELETED
+    CUSTOMER_DELETED,
 )
 
 from .models import Customer
@@ -244,15 +244,14 @@ class UpdateCustomerView(AuthenticatedAPIView):
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+
 class DeleteCustomerView(AuthenticatedAPIView):
 
     def delete(self, request, customer_id):
 
         try:
 
-            customer = Customer.objects(
-                customer_id=customer_id
-            ).first()
+            customer = Customer.objects(customer_id=customer_id).first()
 
             if not customer:
 
@@ -267,6 +266,45 @@ class DeleteCustomerView(AuthenticatedAPIView):
             return success_response(
                 None,
                 CUSTOMER_DELETED,
+                status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class MakeCustomerActiveInactiveView(AuthenticatedAPIView):
+    def post(self, request, customer_id):
+        try:
+
+            customer = Customer.objects(customer_id=customer_id).first()
+
+            if not customer:
+
+                return error_response(
+                    CUSTOMER_NOT_FOUND,
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+            statusValue = request.data.get("status")
+            if not statusValue:
+                return error_response(
+                    "Status field is required",
+                    None,
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+            customer.status = statusValue
+            customer.save()
+
+            return success_response(
+                None,
+                f"{statusValue.capitalize()} customer status successfully updated",
                 status.HTTP_200_OK,
             )
 
