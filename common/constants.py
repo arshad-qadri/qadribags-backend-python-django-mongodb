@@ -18,7 +18,7 @@ ALL_FIELDS_REQUIRED = "All fields are required"
 
 PRODUCT_CREATED = "Product created successfully"
 PRODUCT_ALREADY_EXIST = "Product already exists"
-
+PRODUCT_NOT_FOUND = "Product not found"
 
 CUSTOMER_CREATED = "Customer created successfully"
 
@@ -26,3 +26,9 @@ CUSTOMER_ALREADY_EXIST = "Customer already exists"
 
 CUSTOMER_NOT_FOUND = "Customer not found"
 CUSTOMER_DELETED = "Customer deleted successfully"
+
+ORDER_CREATED = "Order created successfully"
+
+ORDER_NOT_FOUND = "Order not found"
+
+INSUFFICIENT_STOCK = "Insufficient stock"
