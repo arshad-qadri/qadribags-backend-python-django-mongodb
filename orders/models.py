@@ -40,6 +40,14 @@ class Order(Document):
         default=0
     )
 
+    payment_type = StringField(
+        default="CREDIT"
+    )
+
+    payment_mode = StringField(
+        default=""
+    )
+
     due_amount = FloatField(
         required=True
     )

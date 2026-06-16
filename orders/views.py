@@ -28,11 +28,148 @@ from .models import (
 )
 from .serializers import OrderSerializer
 
+
+def _calculate_payment_details(payment_type, amount_paying, grand_total):
+    payment_type = str(payment_type or "credit").strip().lower()
+
+    try:
+        amount_paying = float(amount_paying or 0)
+    except (TypeError, ValueError):
+        return None, error_response(
+            "amount_paying must be a valid number",
+            None,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    if amount_paying < 0:
+        return None, error_response(
+            "amount_paying cannot be negative",
+            None,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    if payment_type == "credit":
+        return (
+            {
+                "payment_type": "CREDIT",
+                "paid_amount": 0,
+                "due_amount": grand_total,
+                "payment_status": "CREDIT",
+            },
+            None,
+        )
+
+    if amount_paying > grand_total:
+        return None, error_response(
+            "amount_paying cannot be greater than grand total",
+            None,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    due_amount = grand_total - amount_paying
+
+    if due_amount == 0:
+        payment_status = "PAID"
+    elif amount_paying > 0:
+        payment_status = "PARTIAL_PAID"
+    else:
+        payment_status = "CREDIT"
+
+    return (
+        {
+            "payment_type": payment_type.upper(),
+            "paid_amount": amount_paying,
+            "due_amount": due_amount,
+            "payment_status": payment_status,
+        },
+        None,
+    )
+
+
+def _build_order_items(order_items):
+    final_order_items = []
+    grand_total = 0
+    stock_updates = []
+
+    for item in order_items:
+        sku = item.get("sku")
+        quantity = item.get("quantity")
+
+        if not sku or not quantity:
+            return None, None, error_response(
+                "Sku and quantity are required",
+                None,
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        if quantity <= 0:
+            return None, None, error_response(
+                "Quantity must be greater than zero",
+                None,
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        product = Product.objects(sku=sku).first()
+        if not product:
+            return None, None, error_response(
+                f"Product not found for sku {sku}",
+                None,
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        if quantity > product.stock:
+            return None, None, error_response(
+                INSUFFICIENT_STOCK,
+                {
+                    "sku": sku,
+                    "name": product.name,
+                    "available_stock": product.stock,
+                },
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        grand_total += quantity * product.price
+        final_order_items.append(OrderItem(sku=product.sku, quantity=quantity))
+        stock_updates.append((product, quantity))
+
+    return final_order_items, grand_total, stock_updates, None
+
+
+def _apply_stock_updates(stock_updates):
+    for product, quantity in stock_updates:
+        product.stock -= quantity
+        product.save()
+
+
+def _restore_existing_order_stock(order):
+    restored_products = []
+
+    for item in order.items:
+        product = Product.objects(sku=item.sku).first()
+        if product:
+            product.stock += item.quantity
+            product.save()
+            restored_products.append((product, item.quantity))
+
+    return restored_products
+
+
+def _rollback_restored_stock(restored_products):
+    for product, quantity in restored_products:
+        product.stock -= quantity
+        product.save()
+
+
 class CreateOrderView(AuthenticatedAPIView):
     def post(self, request):
         try:
             customer_id = request.data.get("customer_id")
             order_items = request.data.get("order_items", [])
+            payment_type = (
+                str(request.data.get("payment_type", "credit")).strip().lower()
+            )
+            payment_mode = str(request.data.get("payment_mode", "")).strip()
+            amount_paying = request.data.get("amount_paying", 0)
 
             if not customer_id:
                 return error_response(
@@ -57,74 +194,30 @@ class CreateOrderView(AuthenticatedAPIView):
                     status.HTTP_404_NOT_FOUND,
                 )
 
-            final_order_items = []
+            final_order_items, grand_total, stock_updates, order_error = _build_order_items(order_items)
+            if order_error:
+                return order_error
 
-            grand_total = 0
+            payment_details, payment_error = _calculate_payment_details(
+                payment_type,
+                amount_paying,
+                grand_total,
+            )
+            if payment_error:
+                return payment_error
 
-            for item in order_items:
-                sku = item.get("sku")
-                quantity = item.get("quantity")
-
-                if not sku or not quantity:
-
-                    return error_response(
-                        "Sku and quantity are required",
-                        None,
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-                if quantity <= 0:
-                    return error_response(
-                        "Quantity must be greater than zero",
-                        None,
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-                product = Product.objects(sku=sku).first()
-
-                if not product:
-
-                    return error_response(
-                        f"Product not found for sku {sku}",
-                        None,
-                        status.HTTP_404_NOT_FOUND,
-                    )
-
-                if quantity > product.stock:
-
-                    return error_response(
-                        INSUFFICIENT_STOCK,
-                        {
-                            "sku": sku,
-                            "name": product.name,
-                            "available_stock": product.stock,
-                        },
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-                item_total = quantity * product.price
-
-                grand_total += item_total
-
-                final_order_items.append(
-                    OrderItem(
-                        sku=product.sku,
-                        quantity=quantity,
-                    )
-                )
-
-                product.stock -= quantity
-
-                product.save()
+            _apply_stock_updates(stock_updates)
 
             order = Order(
                 order_number=generate_order_number(),
                 customer_id=customer_id,
                 items=final_order_items,
                 grand_total=grand_total,
-                paid_amount=0,
-                due_amount=grand_total,
-                payment_status="UNPAID",
+                payment_type=payment_details["payment_type"],
+                payment_mode=payment_mode,
+                paid_amount=payment_details["paid_amount"],
+                due_amount=payment_details["due_amount"],
+                payment_status=payment_details["payment_status"],
             )
 
             order.save()
@@ -133,7 +226,11 @@ class CreateOrderView(AuthenticatedAPIView):
                 {
                     "order_number": order.order_number,
                     "grand_total": grand_total,
-                    "due_amount": grand_total,
+                    "payment_type": order.payment_type,
+                    "payment_mode": order.payment_mode,
+                    "paid_amount": order.paid_amount,
+                    "due_amount": order.due_amount,
+                    "payment_status": order.payment_status,
                 },
                 ORDER_CREATED,
                 status.HTTP_201_CREATED,
@@ -147,62 +244,137 @@ class CreateOrderView(AuthenticatedAPIView):
             )
 
 
-# ger order details by id
-# db.orders.aggregate([
-#   {$match:{
-#     "order_number":"QB-ORD-E831E52026-0002"
-#   }},
-#   {
-#     $lookup: {
-#       from: "customers",
-#       localField: "customer_id",
-#       foreignField: "customer_id",
-#       as: "customerDetails"
-#     }
-#   },
-#   {
-#     $lookup: {
-#       from: "products",
-#       localField: "items.sku",
-#       foreignField: "sku",
-#       as: "productDetails"
-#     }
-#   },
-#   {
-#     $project:{
-#       items:0,
-#       customer_id:0
-#     }
-#   }
-# ])
+class EditOrderView(AuthenticatedAPIView):
+    def put(self, request, order_number):
+        try:
+            order = Order.objects(order_number=order_number).first()
+
+            if not order:
+                return error_response(
+                    "Order not found",
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            customer_id = request.data.get("customer_id", order.customer_id)
+            order_items = request.data.get("order_items")
+            payment_type = request.data.get("payment_type", order.payment_type)
+            payment_mode = str(request.data.get("payment_mode", order.payment_mode)).strip()
+            amount_paying = request.data.get("amount_paying", order.paid_amount)
+
+            customer = Customer.objects(customer_id=customer_id).first()
+            if not customer:
+                return error_response(
+                    CUSTOMER_NOT_FOUND,
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            existing_items = [{"sku": item.sku, "quantity": item.quantity} for item in order.items]
+            updated_items = order_items if order_items is not None else existing_items
+
+            if not updated_items:
+                return error_response(
+                    "At least one order item is required",
+                    None,
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+            existing_skus = {item["sku"] for item in existing_items}
+            updated_skus = {item.get("sku") for item in updated_items}
+            new_skus = updated_skus - existing_skus
+
+            if new_skus:
+                return error_response(
+                    "New items cannot be added while editing an order",
+                    {"invalid_skus": list(new_skus)},
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+            restored_products = _restore_existing_order_stock(order)
+
+            final_order_items, grand_total, stock_updates, order_error = _build_order_items(updated_items)
+            if order_error:
+                _rollback_restored_stock(restored_products)
+                return order_error
+
+            payment_details, payment_error = _calculate_payment_details(
+                payment_type,
+                amount_paying,
+                grand_total,
+            )
+            if payment_error:
+                _rollback_restored_stock(restored_products)
+                return payment_error
+
+            _apply_stock_updates(stock_updates)
+
+            order.customer_id = customer_id
+            order.items = final_order_items
+            order.grand_total = grand_total
+            order.payment_type = payment_details["payment_type"]
+            order.payment_mode = payment_mode
+            order.paid_amount = payment_details["paid_amount"]
+            order.due_amount = payment_details["due_amount"]
+            order.payment_status = payment_details["payment_status"]
+            order.save()
+
+            return success_response(
+                {"order": OrderSerializer(order).data},
+                "Order updated successfully.",
+                status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
-# db.customers.aggregate([
-#   {$match:{
-#     "customer_id":"QB-CUST-E60786-001"
-#   }},
-#   {
-#     $lookup: {
-#       from: "orders",
-#       localField: "customer_id",
-#       foreignField: "customer_id",
-#       as: "orderDetails"
-#     }
-#   },
-#   {
-#     $lookup: {
-#       from: "products",
-#       localField: "orderDetails.items.sku",
-#       foreignField: "sku",
-#       as: "orderDetails.productDetails"
-#     }
-#   },
-#   {
-#     $project:{
-#       customer_id:0
-#     }
-#   }
-# ])
+class GetAllOrders(AuthenticatedAPIView):
+    def get(self, request):
+        try:
+            orders = Order.objects().order_by("-created_at")
+            serializer = OrderSerializer(orders, many=True)
+            return success_response(
+                {"orders": serializer.data},
+                "Orders fetched successfully.",
+                status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class GetOrderById(AuthenticatedAPIView):
+    def get(self, request, order_number):
+        try:
+            order = Order.objects(order_number=order_number).first()
+
+            if not order:
+                return error_response(
+                    "Order not found",
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = OrderSerializer(order)
+            return success_response(
+                {"order": serializer.data},
+                "Order fetched successfully.",
+                status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return error_response(
+                INTERNAL_SERVER_ERROR,
+                str(e),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class GetOrdersbyCustomerId(AuthenticatedAPIView):
@@ -212,9 +384,11 @@ class GetOrdersbyCustomerId(AuthenticatedAPIView):
             orders = Order.objects.filter(customer_id=customer_id)
             serializer = OrderSerializer(orders, many=True)
             return success_response(
-                {"orders":serializer.data}, "Fetched customer order data successfully", status.HTTP_200_OK
+                {"orders": serializer.data},
+                "Fetched customer order data successfully",
+                status.HTTP_200_OK,
             )
-            
+
         except Customer.DoesNotExist:
             return error_response(
                 CUSTOMER_NOT_FOUND,
@@ -226,4 +400,34 @@ class GetOrdersbyCustomerId(AuthenticatedAPIView):
                 INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class GetOrderVlaueByCustomerId(AuthenticatedAPIView):
+    def get(self, request, customer_id):
+        try:
+            customer = Customer.objects(customer_id=customer_id).first()
+
+            if not customer:
+                return error_response(
+                    CUSTOMER_NOT_FOUND,
+                    None,
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            orders = Order.objects(customer_id=customer_id)
+            total_order_value = sum(order.grand_total for order in orders)
+            total_due_amount = sum(order.due_amount for order in orders)
+
+            return success_response(
+                {
+                    "order_value": total_order_value,
+                    "due_amount": total_due_amount,
+                },
+                "Fetched customer order value successfully",
+                status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return error_response(
+                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )

@@ -2,6 +2,7 @@ from rest_framework import serializers, status
 from common.authentication import AuthenticatedAPIView
 from orders.models import Order
 from products.models import Product
+from customers.models import Customer
 
 
 class OrderItemSerializer(serializers.Serializer):
@@ -31,8 +32,11 @@ class OrderSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
     order_number = serializers.CharField()
     customer_id = serializers.CharField()
+    customer_details = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True)
     grand_total = serializers.FloatField()
+    payment_type = serializers.CharField()
+    payment_mode = serializers.CharField()
     paid_amount = serializers.FloatField()
     due_amount = serializers.FloatField()
     payment_status = serializers.CharField()
@@ -41,6 +45,17 @@ class OrderSerializer(serializers.Serializer):
 
     def get_id(self, obj):
         return str(obj.id)
+
+    def get_customer_details(self, obj):
+        customer = Customer.objects(customer_id=obj.customer_id).first()
+        if not customer:
+            return None
+        return {
+            "customer_id": customer.customer_id,
+            "name": customer.name,
+            "mobile_number": customer.mobile_number,
+            "city": customer.city,
+        }
 
 
 class GetOrdersbyCustomerId(AuthenticatedAPIView):
