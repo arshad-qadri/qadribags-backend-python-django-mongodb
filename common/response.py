@@ -1,9 +1,10 @@
 from rest_framework.response import Response
+from common.constants import Messages
 
 
 def success_response(
     data=None,
-    message="Success",
+    message=Messages.SUCCESS,
     status_code=200
 ):
     return Response(
@@ -17,7 +18,7 @@ def success_response(
 
 
 def error_response(
-    message="Something went wrong",
+    message=Messages.SOMETHING_WENT_WRONG,
     errors=None,
     status_code=400
 ):

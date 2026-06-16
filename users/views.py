@@ -4,19 +4,7 @@ from rest_framework import status
 from datetime import datetime, timedelta, timezone
 import jwt
 from django.conf import settings
-from common.constants import (
-    USERNAME_ALREADY_EXIST,
-    USER_CREATED,
-    INTERNAL_SERVER_ERROR,
-    ALL_FIELDS_REQUIRED,
-    EMAIL_ALREADY_EXIST,
-    LOGIN_SUCCESS,
-    INVALID_CREDENTIALS,
-    TOKEN_EXPIRED,
-    USER_FETCHED,
-    TOKEN_REQUIRED,
-    USER_NOT_FOUND
-)
+from common.constants import Messages
 from common.response import error_response, success_response
 
 from .models import User
@@ -34,20 +22,20 @@ class RegisterView(APIView):
 
             if not name or not username or not email or not password:
                 return error_response(
-                    ALL_FIELDS_REQUIRED, None, status.HTTP_400_BAD_REQUEST
+                    Messages.ALL_FIELDS_REQUIRED, None, status.HTTP_400_BAD_REQUEST
                 )
 
             existing_user = User.objects(username=username).first()
 
             if existing_user:
                 return error_response(
-                    USERNAME_ALREADY_EXIST, None, status.HTTP_400_BAD_REQUEST
+                    Messages.USERNAME_ALREADY_EXIST, None, status.HTTP_400_BAD_REQUEST
                 )
 
             existing_email = User.objects(email=email).first()
             if existing_email:
                 return error_response(
-                    EMAIL_ALREADY_EXIST, None, status.HTTP_400_BAD_REQUEST
+                    Messages.EMAIL_ALREADY_EXIST, None, status.HTTP_400_BAD_REQUEST
                 )
 
             user = User(
@@ -59,12 +47,12 @@ class RegisterView(APIView):
 
             user.save()
 
-            return success_response(None, USER_CREATED, status.HTTP_201_CREATED)
+            return success_response(None, Messages.USER_CREATED, status.HTTP_201_CREATED)
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -78,7 +66,7 @@ class LoginView(APIView):
 
             if not username or not password:
                 return error_response(
-                    ALL_FIELDS_REQUIRED,
+                    Messages.ALL_FIELDS_REQUIRED,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -87,7 +75,7 @@ class LoginView(APIView):
 
             if not user:
                 return error_response(
-                    INVALID_CREDENTIALS,
+                    Messages.INVALID_CREDENTIALS,
                     None,
                     status.HTTP_401_UNAUTHORIZED,
                 )
@@ -99,7 +87,7 @@ class LoginView(APIView):
 
             if not is_valid_password:
                 return error_response(
-                    INVALID_CREDENTIALS,
+                    Messages.INVALID_CREDENTIALS,
                     None,
                     status.HTTP_401_UNAUTHORIZED,
                 )
@@ -124,14 +112,14 @@ class LoginView(APIView):
                     #     "role": user.role,
                     # },
                 },
-                LOGIN_SUCCESS,
+                Messages.LOGIN_SUCCESS,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -145,7 +133,7 @@ class GetLoggedInUser(APIView):
             auth_header = request.headers.get("Authorization")
             if not auth_header:
                 return error_response(
-                    TOKEN_REQUIRED,
+                    Messages.TOKEN_REQUIRED,
                     None,
                     status.HTTP_401_UNAUTHORIZED,
                 )
@@ -164,7 +152,7 @@ class GetLoggedInUser(APIView):
 
             if not user:
                 return error_response(
-                    USER_NOT_FOUND,
+                    Messages.USER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -177,21 +165,21 @@ class GetLoggedInUser(APIView):
                     "email": user.email,
                     "role": user.role,
                 },
-                USER_FETCHED,
+                Messages.USER_FETCHED,
                 status.HTTP_200_OK,
             )
 
         except jwt.ExpiredSignatureError:
 
             return error_response(
-                TOKEN_EXPIRED,
+                Messages.TOKEN_EXPIRED,
                 None,
                 status.HTTP_401_UNAUTHORIZED,
             )
         except Exception as e:
             print(e)
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

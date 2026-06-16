@@ -1,12 +1,7 @@
 from rest_framework import status
 import random
 from common.authentication import AuthenticatedAPIView
-from common.constants import (
-    # PRODUCT_CREATED,
-    # PRODUCT_ALREADY_EXIST,
-    # ALL_FIELDS_REQUIRED,
-    INTERNAL_SERVER_ERROR,
-)
+from common.constants import Messages
 
 from common.response import (
     success_response,
@@ -22,11 +17,11 @@ class GetTotalAvailableStockAndProductCount(AuthenticatedAPIView):
             total_available_stock = Product.objects.sum("stock")
             total_product_count = Product.objects.count()
             return success_response(
-                {"total_available_stock": total_available_stock, "total_product_count":total_product_count}, "Stock fetched successfully"
+                {"total_available_stock": total_available_stock, "total_product_count":total_product_count}, Messages.STOCK_FETCHED
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -36,13 +31,13 @@ class GetLowStockProductCount(AuthenticatedAPIView):
             total_low_stock = Product.objects.filter(stock__lte=10).count()
             return success_response(
                 {"lowStock": total_low_stock},
-                "Low stock product count fetched successfully",
+                Messages.LOW_STOCK_PRODUCT_COUNT_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -62,13 +57,13 @@ class GetTotalValue(AuthenticatedAPIView):
                 total_catalog_value = 0
             return success_response(
                 {"value": total_catalog_value},
-                "Catalog value fetched successfully",
+                Messages.CATALOG_VALUE_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -125,12 +120,12 @@ class InventoryByCategoryPercentage(AuthenticatedAPIView):
 
             return success_response(
                 {"categoryItems": result},
-                "Catalog value fetched successfully",
+                Messages.CATALOG_VALUE_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -144,12 +139,12 @@ class GetLowStockAlerts(AuthenticatedAPIView):
             result = list(Product.objects.aggregate(*pipeline))
             return success_response(
                 {"lowStockAlerts": result},
-                "Low stock alerts fetched successfully",
+                Messages.LOW_STOCK_ALERTS_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -165,10 +160,10 @@ class GetTotalProductCount(AuthenticatedAPIView):
                     "inactive_product_count": inactive_product_count,
                     "total_products":total_products
                 },
-                "Product count fetched successfully",
+                Messages.PRODUCT_COUNT_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )

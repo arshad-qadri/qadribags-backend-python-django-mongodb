@@ -9,14 +9,7 @@ from common.response import (
     error_response,
 )
 
-from common.constants import (
-    ALL_FIELDS_REQUIRED,
-    CUSTOMER_CREATED,
-    CUSTOMER_ALREADY_EXIST,
-    INTERNAL_SERVER_ERROR,
-    CUSTOMER_NOT_FOUND,
-    CUSTOMER_DELETED,
-)
+from common.constants import Messages
 
 from .models import Customer
 
@@ -41,7 +34,7 @@ class CreateCustomerView(AuthenticatedAPIView):
 
             if missing_fields:
                 return error_response(
-                    ALL_FIELDS_REQUIRED,
+                    Messages.ALL_FIELDS_REQUIRED,
                     {"missing_fields": missing_fields},
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -51,7 +44,7 @@ class CreateCustomerView(AuthenticatedAPIView):
             if existing_customer:
 
                 return error_response(
-                    CUSTOMER_ALREADY_EXIST,
+                    Messages.CUSTOMER_ALREADY_EXIST,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -76,14 +69,14 @@ class CreateCustomerView(AuthenticatedAPIView):
 
             return success_response(
                 {"id": str(customer.id)},
-                CUSTOMER_CREATED,
+                Messages.CUSTOMER_CREATED,
                 status.HTTP_201_CREATED,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -99,14 +92,14 @@ class GetAllCustomersView(AuthenticatedAPIView):
 
             return success_response(
                 CustomerSerializer.serialize_many(customers),
-                "Customers fetched successfully",
+                Messages.CUSTOMERS_FETCHED,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -123,21 +116,21 @@ class GetCustomerByIdView(AuthenticatedAPIView):
             if not customer:
 
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
 
             return success_response(
                 CustomerSerializer.serialize(customer),
-                "Customer fetched successfully",
+                Messages.CUSTOMER_FETCHED,
                 status.HTTP_200_OK,
             )
 
         except InvalidId:
 
             return error_response(
-                CUSTOMER_NOT_FOUND,
+                Messages.CUSTOMER_NOT_FOUND,
                 None,
                 status.HTTP_404_NOT_FOUND,
             )
@@ -145,7 +138,7 @@ class GetCustomerByIdView(AuthenticatedAPIView):
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -162,7 +155,7 @@ class UpdateCustomerView(AuthenticatedAPIView):
             if not customer:
 
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -178,7 +171,7 @@ class UpdateCustomerView(AuthenticatedAPIView):
                 if existing_customer and str(existing_customer.id) != str(customer.id):
 
                     return error_response(
-                        CUSTOMER_ALREADY_EXIST,
+                        Messages.CUSTOMER_ALREADY_EXIST,
                         None,
                         status.HTTP_400_BAD_REQUEST,
                     )
@@ -232,14 +225,14 @@ class UpdateCustomerView(AuthenticatedAPIView):
 
             return success_response(
                 CustomerSerializer.serialize(customer),
-                "Customer updated successfully",
+                Messages.CUSTOMER_UPDATED,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -256,7 +249,7 @@ class DeleteCustomerView(AuthenticatedAPIView):
             if not customer:
 
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -265,14 +258,14 @@ class DeleteCustomerView(AuthenticatedAPIView):
 
             return success_response(
                 None,
-                CUSTOMER_DELETED,
+                Messages.CUSTOMER_DELETED,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -287,14 +280,14 @@ class MakeCustomerActiveInactiveView(AuthenticatedAPIView):
             if not customer:
 
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
             statusValue = request.data.get("status")
             if not statusValue:
                 return error_response(
-                    "Status field is required",
+                    Messages.CUSTOMER_STATUS_REQUIRED,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -304,14 +297,14 @@ class MakeCustomerActiveInactiveView(AuthenticatedAPIView):
 
             return success_response(
                 None,
-                f"{statusValue.capitalize()} customer status successfully updated",
+                Messages.customer_status_updated(statusValue),
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -326,14 +319,14 @@ class MakeCustomerActiveInactiveView(AuthenticatedAPIView):
             if not customer:
 
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
             statusValue = request.data.get("status")
             if not statusValue:
                 return error_response(
-                    "Status field is required",
+                    Messages.CUSTOMER_STATUS_REQUIRED,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -343,14 +336,14 @@ class MakeCustomerActiveInactiveView(AuthenticatedAPIView):
 
             return success_response(
                 None,
-                f"{statusValue.capitalize()} customer status successfully updated",
+                Messages.customer_status_updated(statusValue),
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

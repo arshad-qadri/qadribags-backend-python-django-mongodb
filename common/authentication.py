@@ -3,13 +3,13 @@ from django.conf import settings
 from rest_framework.exceptions import APIException, AuthenticationFailed, NotFound
 from rest_framework.views import APIView
 
-from common.constants import TOKEN_EXPIRED, TOKEN_REQUIRED, USER_NOT_FOUND
+from common.constants import Messages
 from users.models import User
 
 
 class TokenRequired(APIException):
     status_code = 401
-    default_detail = TOKEN_REQUIRED
+    default_detail = Messages.TOKEN_REQUIRED
     default_code = "not_authenticated"
 
 
@@ -28,7 +28,7 @@ class AuthenticatedAPIView(APIView):
         token_parts = auth_header.split(" ")
 
         if len(token_parts) != 2 or token_parts[0].lower() != "bearer":
-            raise AuthenticationFailed("Invalid token")
+            raise AuthenticationFailed(Messages.INVALID_TOKEN)
 
         try:
             payload = jwt.decode(
@@ -39,11 +39,11 @@ class AuthenticatedAPIView(APIView):
             user = User.objects(id=payload.get("user_id")).first()
 
             if not user:
-                raise NotFound(USER_NOT_FOUND)
+                raise NotFound(Messages.USER_NOT_FOUND)
 
             request.auth_user = user
 
         except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed(TOKEN_EXPIRED)
+            raise AuthenticationFailed(Messages.TOKEN_EXPIRED)
         except jwt.InvalidTokenError:
-            raise AuthenticationFailed("Invalid token")
+            raise AuthenticationFailed(Messages.INVALID_TOKEN)

@@ -1,12 +1,7 @@
 from rest_framework import status
 
 from common.authentication import AuthenticatedAPIView
-from common.constants import (
-    PRODUCT_CREATED,
-    PRODUCT_ALREADY_EXIST,
-    ALL_FIELDS_REQUIRED,
-    INTERNAL_SERVER_ERROR,
-)
+from common.constants import Messages
 
 from common.response import (
     success_response,
@@ -45,7 +40,7 @@ class CreateProductView(AuthenticatedAPIView):
 
             if missing_fields:
                 return error_response(
-                    ALL_FIELDS_REQUIRED,
+                    Messages.ALL_FIELDS_REQUIRED,
                     {"missing_fields": missing_fields},
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -54,7 +49,7 @@ class CreateProductView(AuthenticatedAPIView):
 
             if existing_product:
                 return error_response(
-                    PRODUCT_ALREADY_EXIST,
+                    Messages.PRODUCT_ALREADY_EXIST,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -80,14 +75,14 @@ class CreateProductView(AuthenticatedAPIView):
 
             return success_response(
                 {"id": str(product.id)},
-                PRODUCT_CREATED,
+                Messages.PRODUCT_CREATED,
                 status.HTTP_201_CREATED,
             )
 
         except Exception as e:
 
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -102,7 +97,7 @@ class UploadProductImageView(AuthenticatedAPIView):
 
             if not product:
                 return error_response(
-                    "Product not found",
+                    Messages.PRODUCT_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -111,7 +106,7 @@ class UploadProductImageView(AuthenticatedAPIView):
 
             if not image:
                 return error_response(
-                    "Image is required",
+                    Messages.IMAGE_REQUIRED,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -129,14 +124,14 @@ class UploadProductImageView(AuthenticatedAPIView):
 
             return success_response(
                 uploaded_image,
-                "Image uploaded successfully",
+                Messages.IMAGE_UPLOADED,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
 
             return error_response(
-                "Image upload failed",
+                Messages.IMAGE_UPLOAD_FAILED,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -149,20 +144,20 @@ class GetProductBySKU(AuthenticatedAPIView):
 
             if not product:
                 return error_response(
-                    "Product not found",
+                    Messages.PRODUCT_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
 
             return success_response(
                 ProductSerializer(product).data,
-                "Product found successfully",
+                Messages.PRODUCT_FOUND,
                 status.HTTP_200_OK,
             )
         except Exception as e:
 
             return error_response(
-                "Image upload failed",
+                Messages.IMAGE_UPLOAD_FAILED,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -177,7 +172,7 @@ class GetProductList(AuthenticatedAPIView):
             return success_response(serializer.data, None, status.HTTP_200_OK)
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -190,26 +185,26 @@ class ActiveInactiveProductBySKU(AuthenticatedAPIView):
 
             if not requested_status:
                 return error_response(
-                    "Status is required", None, status.HTTP_400_BAD_REQUEST
+                    Messages.STATUS_REQUIRED, None, status.HTTP_400_BAD_REQUEST
                 )
 
             try:
                 product = Product.objects.get(sku=sku)
             except Product.DoesNotExist:
                 return error_response(
-                    "Product not found", None, status.HTTP_404_BAD_REQUEST
+                    Messages.PRODUCT_NOT_FOUND, None, status.HTTP_404_BAD_REQUEST
                 )
 
             product.status = requested_status
             product.save()
 
             return success_response(
-                None, f"Product {requested_status.lower()} successfully"
+                None, Messages.product_status_updated(requested_status)
             )
 
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -222,7 +217,7 @@ class UpdateProductView(AuthenticatedAPIView):
                 product = Product.objects.get(sku=sku)
             except Product.DoesNotExist:
                 return error_response(
-                    "Product not found", None, status.HTTP_404_NOT_FOUND
+                    Messages.PRODUCT_NOT_FOUND, None, status.HTTP_404_NOT_FOUND
                 )
 
             data = request.data
@@ -230,7 +225,7 @@ class UpdateProductView(AuthenticatedAPIView):
             for field in ["name", "category", "price"]:
                 if field in data and not data.get(field):
                     return error_response(
-                        f"{field.capitalize()} cannot be empty",
+                        Messages.field_cannot_be_empty(field),
                         None,
                         status.HTTP_400_BAD_REQUEST,
                     )
@@ -262,13 +257,13 @@ class UpdateProductView(AuthenticatedAPIView):
 
             return success_response(
                 {"sku": product.sku},
-                "Product updated successfully",
+                Messages.PRODUCT_UPDATED,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -282,8 +277,8 @@ class DeleteImageView(AuthenticatedAPIView):
 
             if not public_id:
                 return error_response(
-                    "Missing public_id",
-                    "public_id is required in request body",
+                    Messages.MISSING_PUBLIC_ID,
+                    Messages.PUBLIC_ID_REQUIRED,
                     status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -294,8 +289,8 @@ class DeleteImageView(AuthenticatedAPIView):
 
             if not image_exists:
                 return error_response(
-                    "Image not found",
-                    f"The image with public_id '{public_id}' is not associated with this product.",
+                    Messages.IMAGE_NOT_FOUND,
+                    Messages.image_not_associated_with_product(public_id),
                     status.HTTP_404_NOT_FOUND,
                 )
 
@@ -308,20 +303,20 @@ class DeleteImageView(AuthenticatedAPIView):
 
             return success_response(
                 None,
-                "Image deleted successfully",
+                Messages.IMAGE_DELETED,
                 status.HTTP_200_OK,
             )
 
         except Product.DoesNotExist:
             return error_response(
-                "Product not found",
-                f"No product found with SKU: {sku}",
+                Messages.PRODUCT_NOT_FOUND,
+                Messages.no_product_found_with_sku(sku),
                 status.HTTP_404_NOT_FOUND,
             )
 
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

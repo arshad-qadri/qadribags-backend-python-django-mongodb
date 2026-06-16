@@ -1,5 +1,7 @@
 from rest_framework import serializers, status
 from common.authentication import AuthenticatedAPIView
+from common.constants import Messages
+from common.response import error_response, success_response
 from orders.models import Order
 from products.models import Product
 from customers.models import Customer
@@ -66,13 +68,13 @@ class GetOrdersbyCustomerId(AuthenticatedAPIView):
 
             return success_response(
                 {"orders": serializer.data},
-                "Fetched customer order data successfully",
+                Messages.CUSTOMER_ORDER_DATA_FETCHED,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

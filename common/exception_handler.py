@@ -1,6 +1,7 @@
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
+from common.constants import Messages
 
 
 def custom_exception_handler(exc, context):
@@ -11,7 +12,7 @@ def custom_exception_handler(exc, context):
         return Response(
             {
                 "success": False,
-                "message": "Request failed",
+                "message": Messages.REQUEST_FAILED,
                 "errors": response.data
             },
             status=response.status_code
@@ -20,7 +21,7 @@ def custom_exception_handler(exc, context):
     return Response(
         {
             "success": False,
-            "message": "Internal server error",
+            "message": Messages.INTERNAL_SERVER_ERROR,
             "errors": str(exc)
         },
         status=status.HTTP_500_INTERNAL_SERVER_ERROR

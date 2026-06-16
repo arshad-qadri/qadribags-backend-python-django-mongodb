@@ -9,14 +9,7 @@ from common.response import (
     error_response,
 )
 
-from common.constants import (
-    ALL_FIELDS_REQUIRED,
-    CUSTOMER_NOT_FOUND,
-    PRODUCT_NOT_FOUND,
-    INSUFFICIENT_STOCK,
-    INTERNAL_SERVER_ERROR,
-    ORDER_CREATED,
-)
+from common.constants import Messages
 
 from common.utils import (
     generate_order_number,
@@ -36,14 +29,14 @@ def _calculate_payment_details(payment_type, amount_paying, grand_total):
         amount_paying = float(amount_paying or 0)
     except (TypeError, ValueError):
         return None, error_response(
-            "amount_paying must be a valid number",
+            Messages.AMOUNT_PAYING_INVALID,
             None,
             status.HTTP_400_BAD_REQUEST,
         )
 
     if amount_paying < 0:
         return None, error_response(
-            "amount_paying cannot be negative",
+            Messages.AMOUNT_PAYING_NEGATIVE,
             None,
             status.HTTP_400_BAD_REQUEST,
         )
@@ -61,7 +54,7 @@ def _calculate_payment_details(payment_type, amount_paying, grand_total):
 
     if amount_paying > grand_total:
         return None, error_response(
-            "amount_paying cannot be greater than grand total",
+            Messages.AMOUNT_PAYING_EXCEEDS_TOTAL,
             None,
             status.HTTP_400_BAD_REQUEST,
         )
@@ -97,14 +90,14 @@ def _build_order_items(order_items):
 
         if not sku or not quantity:
             return None, None, error_response(
-                "Sku and quantity are required",
+                Messages.SKU_AND_QUANTITY_REQUIRED,
                 None,
                 status.HTTP_400_BAD_REQUEST,
             )
 
         if quantity <= 0:
             return None, None, error_response(
-                "Quantity must be greater than zero",
+                Messages.QUANTITY_MUST_BE_POSITIVE,
                 None,
                 status.HTTP_400_BAD_REQUEST,
             )
@@ -112,14 +105,14 @@ def _build_order_items(order_items):
         product = Product.objects(sku=sku).first()
         if not product:
             return None, None, error_response(
-                f"Product not found for sku {sku}",
+                Messages.product_not_found_for_sku(sku),
                 None,
                 status.HTTP_404_NOT_FOUND,
             )
 
         if quantity > product.stock:
             return None, None, error_response(
-                INSUFFICIENT_STOCK,
+                Messages.INSUFFICIENT_STOCK,
                 {
                     "sku": sku,
                     "name": product.name,
@@ -173,14 +166,14 @@ class CreateOrderView(AuthenticatedAPIView):
 
             if not customer_id:
                 return error_response(
-                    ALL_FIELDS_REQUIRED,
+                    Messages.ALL_FIELDS_REQUIRED,
                     {"missing_fields": ["customer_id"]},
                     status.HTTP_400_BAD_REQUEST,
                 )
 
             if not order_items:
                 return error_response(
-                    "Order items are required",
+                    Messages.ORDER_ITEMS_REQUIRED,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -189,7 +182,7 @@ class CreateOrderView(AuthenticatedAPIView):
 
             if not customer:
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -232,13 +225,13 @@ class CreateOrderView(AuthenticatedAPIView):
                     "due_amount": order.due_amount,
                     "payment_status": order.payment_status,
                 },
-                ORDER_CREATED,
+                Messages.ORDER_CREATED,
                 status.HTTP_201_CREATED,
             )
 
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -251,7 +244,7 @@ class EditOrderView(AuthenticatedAPIView):
 
             if not order:
                 return error_response(
-                    "Order not found",
+                    Messages.ORDER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -265,7 +258,7 @@ class EditOrderView(AuthenticatedAPIView):
             customer = Customer.objects(customer_id=customer_id).first()
             if not customer:
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -275,7 +268,7 @@ class EditOrderView(AuthenticatedAPIView):
 
             if not updated_items:
                 return error_response(
-                    "At least one order item is required",
+                    Messages.ORDER_ITEM_REQUIRED,
                     None,
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -286,7 +279,7 @@ class EditOrderView(AuthenticatedAPIView):
 
             if new_skus:
                 return error_response(
-                    "New items cannot be added while editing an order",
+                    Messages.NEW_ITEMS_NOT_ALLOWED_ON_ORDER_EDIT,
                     {"invalid_skus": list(new_skus)},
                     status.HTTP_400_BAD_REQUEST,
                 )
@@ -321,13 +314,13 @@ class EditOrderView(AuthenticatedAPIView):
 
             return success_response(
                 {"order": OrderSerializer(order).data},
-                "Order updated successfully.",
+                Messages.ORDER_UPDATED,
                 status.HTTP_200_OK,
             )
 
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -340,12 +333,12 @@ class GetAllOrders(AuthenticatedAPIView):
             serializer = OrderSerializer(orders, many=True)
             return success_response(
                 {"orders": serializer.data},
-                "Orders fetched successfully.",
+                Messages.ORDERS_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -358,7 +351,7 @@ class GetOrderById(AuthenticatedAPIView):
 
             if not order:
                 return error_response(
-                    "Order not found",
+                    Messages.ORDER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -366,12 +359,12 @@ class GetOrderById(AuthenticatedAPIView):
             serializer = OrderSerializer(order)
             return success_response(
                 {"order": serializer.data},
-                "Order fetched successfully.",
+                Messages.ORDER_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -385,19 +378,19 @@ class GetOrdersbyCustomerId(AuthenticatedAPIView):
             serializer = OrderSerializer(orders, many=True)
             return success_response(
                 {"orders": serializer.data},
-                "Fetched customer order data successfully",
+                Messages.CUSTOMER_ORDER_DATA_FETCHED,
                 status.HTTP_200_OK,
             )
 
         except Customer.DoesNotExist:
             return error_response(
-                CUSTOMER_NOT_FOUND,
+                Messages.CUSTOMER_NOT_FOUND,
                 None,
                 status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR,
+                Messages.INTERNAL_SERVER_ERROR,
                 str(e),
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -410,7 +403,7 @@ class GetOrderVlaueByCustomerId(AuthenticatedAPIView):
 
             if not customer:
                 return error_response(
-                    CUSTOMER_NOT_FOUND,
+                    Messages.CUSTOMER_NOT_FOUND,
                     None,
                     status.HTTP_404_NOT_FOUND,
                 )
@@ -424,10 +417,10 @@ class GetOrderVlaueByCustomerId(AuthenticatedAPIView):
                     "order_value": total_order_value,
                     "due_amount": total_due_amount,
                 },
-                "Fetched customer order value successfully",
+                Messages.CUSTOMER_ORDER_VALUE_FETCHED,
                 status.HTTP_200_OK,
             )
         except Exception as e:
             return error_response(
-                INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
+                Messages.INTERNAL_SERVER_ERROR, str(e), status.HTTP_500_INTERNAL_SERVER_ERROR
             )
