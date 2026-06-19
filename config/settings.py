@@ -36,15 +36,18 @@ def env_bool(name, default=False):
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-h7x67%yw01!4!67du++e7q&!r$*fz$@)yr6tx)=k0qie)bcf+*'
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool("DEBUG", False)
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS") or [
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
+    ".vercel.app",
 ]
 
 
@@ -101,9 +104,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -142,7 +145,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "common.exception_handler.custom_exception_handler"
@@ -168,6 +172,16 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS") or [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+VERCEL_URL = os.getenv("VERCEL_URL")
+if VERCEL_URL:
+    allowed_host = VERCEL_URL.strip()
+    if allowed_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(allowed_host)
+
+    vercel_origin = f"https://{allowed_host}"
+    if vercel_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(vercel_origin)
 
 CLOUDINARY_CLOUD_NAME = os.getenv(
     "CLOUDINARY_CLOUD_NAME"

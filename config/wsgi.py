@@ -11,6 +11,10 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
+from config.db import connect_db
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+connect_db()
 
 application = get_wsgi_application()

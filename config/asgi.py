@@ -11,6 +11,10 @@ import os
 
 from django.core.asgi import get_asgi_application
 
+from config.db import connect_db
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+connect_db()
 
 application = get_asgi_application()
